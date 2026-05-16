@@ -1,11 +1,11 @@
 {
   "version": 3,
   "targets": {
-    "net10.0-windows7.0": {}
+    "net9.0-windows7.0": {}
   },
   "libraries": {},
   "projectFileDependencyGroups": {
-    "net10.0-windows7.0": []
+    "net9.0-windows7.0": []
   },
   "packageFolders": {
     "C:\\Users\\kamran\\.nuget\\packages\\": {},
@@ -29,7 +29,7 @@
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
-        "net10.0-windows"
+        "net9.0-windows"
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
@@ -37,8 +37,8 @@
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net10.0-windows7.0": {
-          "targetAlias": "net10.0-windows",
+        "net9.0-windows7.0": {
+          "targetAlias": "net9.0-windows",
           "projectReferences": {}
         }
       },
@@ -50,13 +50,13 @@
       "restoreAuditProperties": {
         "enableAudit": "true",
         "auditLevel": "low",
-        "auditMode": "all"
+        "auditMode": "direct"
       },
       "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
-      "net10.0-windows7.0": {
-        "targetAlias": "net10.0-windows",
+      "net9.0-windows7.0": {
+        "targetAlias": "net9.0-windows",
         "imports": [
           "net461",
           "net462",
@@ -68,6 +68,24 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.13, 9.0.13]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.win-x64",
+            "version": "[9.0.13, 9.0.13]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.13, 9.0.13]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[9.0.13, 9.0.13]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"

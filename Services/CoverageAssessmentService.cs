@@ -17,7 +17,7 @@ public sealed class CoverageAssessmentService
     public SalesforceConfigCoverage Assess(string repoPath, SalesforceConfigPlan plan) => AssessAsync(repoPath, plan).GetAwaiter().GetResult();
     public Task<SalesforceConfigCoverage> AssessAsync(SalesforceConfigPlan plan) => AssessAsync(string.Empty, plan);
 
-    public async Task<SalesforceConfigCoverage> AssessAsync(string repoPath, SalesforceConfigPlan plan)
+    public Task<SalesforceConfigCoverage> AssessAsync(string repoPath, SalesforceConfigPlan plan)
     {
         plan ??= new SalesforceConfigPlan();
         var results = new List<RequirementCoverageResult>();
@@ -39,12 +39,12 @@ public sealed class CoverageAssessmentService
             });
         }
 
-        return new SalesforceConfigCoverage
+        return Task.FromResult(new SalesforceConfigCoverage
         {
             OriginalPlan = plan,
             SupportedPlan = supportedPlan,
             Results = results
-        };
+        });
     }
 
     private bool CanHandle(IConfigWorkItemHandler handler, string repoPath, SalesforceConfigRequirement requirement)
