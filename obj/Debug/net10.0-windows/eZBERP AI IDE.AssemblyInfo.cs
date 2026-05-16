@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("eZBERP AI IDE")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+87eab8fa7111f0ed5ff1d03f7ec5c2989051cc05")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3d93f22aab1ca61206fade5656f4506a410ef2e0")]
 [assembly: System.Reflection.AssemblyProductAttribute("eZBERP AI IDE")]
 [assembly: System.Reflection.AssemblyTitleAttribute("eZBERP AI IDE")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

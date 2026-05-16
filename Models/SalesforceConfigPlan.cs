@@ -36,6 +36,8 @@ public sealed class SalesforceConfigRequirement
     public string ValidationRuleName { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;
     public string ErrorLocation { get; set; } = string.Empty;
+    public string PermissionType { get; set; } = string.Empty;
+    public string PermissionValue { get; set; } = string.Empty;
     public List<string> PicklistValues { get; set; } = new();
     public List<PicklistValueRequirement> PicklistEntries { get; set; } = new();
     public List<PicklistValueRenameRequirement> PicklistRenames { get; set; } = new();

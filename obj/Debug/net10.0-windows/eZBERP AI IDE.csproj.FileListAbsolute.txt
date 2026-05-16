@@ -28,3 +28,21 @@ C:\Temp\ezberp-review-buildDebug\net10.0-windows\eZBERP AI IDE.dll
 C:\Temp\ezberp-review-buildDebug\net10.0-windows\eZBERP AI IDE.pdb
 C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP_AI_IDE.GitReviewForm.resources
 C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\bin\Debug\net10.0-windows\eZBERP AI IDE.exe
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP_AI_IDE.Form1.resources
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP_AI_IDE.GitReviewForm.resources
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.csproj.GenerateResource.cache
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.GeneratedMSBuildEditorConfig.editorconfig
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.AssemblyInfoInputs.cache
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.AssemblyInfo.cs
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.csproj.CoreCompileInputs.cache
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.sourcelink.json
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.dll
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\refint\eZBERP AI IDE.dll
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.pdb
+C:\Development\cloneOfAliAssistant\bin\Debug\net10.0-windows\eZBERP AI IDE.exe
+C:\Development\cloneOfAliAssistant\bin\Debug\net10.0-windows\eZBERP AI IDE.deps.json
+C:\Development\cloneOfAliAssistant\bin\Debug\net10.0-windows\eZBERP AI IDE.runtimeconfig.json
+C:\Development\cloneOfAliAssistant\bin\Debug\net10.0-windows\eZBERP AI IDE.dll
+C:\Development\cloneOfAliAssistant\bin\Debug\net10.0-windows\eZBERP AI IDE.pdb
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\eZBERP AI IDE.genruntimeconfig.cache
+C:\Development\cloneOfAliAssistant\obj\Debug\net10.0-windows\ref\eZBERP AI IDE.dll
