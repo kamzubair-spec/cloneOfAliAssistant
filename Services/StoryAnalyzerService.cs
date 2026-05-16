@@ -159,14 +159,10 @@ Return a concise plain-text diagnostic.
 
     private static string BuildSystemPrompt(string repoPath)
     {
-        var profiles = Directory.Exists(Path.Combine(repoPath, "force-app", "main", "default", "profiles"))
-            ? Directory.GetFiles(Path.Combine(repoPath, "force-app", "main", "default", "profiles"), "*.profile-meta.xml")
-                .Select(Path.GetFileNameWithoutExtension)
-                .Select(name => name?.Replace(".profile-meta", string.Empty) ?? string.Empty)
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .OrderBy(name => name)
-                .ToList()
-            : new List<string>();
+        var metadataRoot = Path.Combine(repoPath, "force-app", "main", "default");
+        var profiles = LoadMetadataNames(Path.Combine(metadataRoot, "profiles"), "*.profile-meta.xml", ".profile-meta");
+        var permissionSets = LoadMetadataNames(Path.Combine(metadataRoot, "permissionsets"), "*.permissionset-meta.xml", ".permissionset-meta");
+        var customPermissions = LoadMetadataNames(Path.Combine(metadataRoot, "customPermissions"), "*.customPermission-meta.xml", ".customPermission-meta");
 
         return $$"""
 You are a Salesforce Permission Analyst. Your ONLY job is to extract requirements related to Profiles, Permission Sets, and Custom Permissions.
@@ -181,6 +177,12 @@ If a requirement is NOT for a Profile, Permission Set, or Custom Permission, you
 
 Available profile names:
 {{string.Join(", ", profiles)}}
+
+Available permission set names:
+{{string.Join(", ", permissionSets)}}
+
+Available custom permission names:
+{{string.Join(", ", customPermissions)}}
 
 Return JSON only:
 {
@@ -205,6 +207,10 @@ Return JSON only:
 }
 
 Rules:
+- Only extract profile, permission set, and custom permission work.
+- If the story asks for any other metadata, automation, code, layout, flow, object, field, validation rule, page, or anything outside those three families, return "unsupported_requirement".
+- For unsupported items, set the description to exactly "{{PermissionToolingCatalog.UnsupportedRequirementMessage}}".
+- Use existing metadata API/file names when they are already present in the repo lists above.
 - For FLS: permissionType "fls".
 - For Tabs: permissionType "tab", permissionValue "DefaultOn|DefaultOff|Hidden".
 - For Apex: permissionType "apex_class" or "apex_page", permissionValue "true|false".
@@ -212,6 +218,21 @@ Rules:
 - For User Perms: permissionType "user_permission".
 - EVERY other request MUST be "unsupported_requirement".
 """;
+    }
+
+    private static List<string> LoadMetadataNames(string directory, string searchPattern, string suffixToTrim)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return new List<string>();
+        }
+
+        return Directory.GetFiles(directory, searchPattern)
+            .Select(Path.GetFileNameWithoutExtension)
+            .Select(name => name?.Replace(suffixToTrim, string.Empty, StringComparison.OrdinalIgnoreCase) ?? string.Empty)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static bool TryExtractJson(string response, out string json)

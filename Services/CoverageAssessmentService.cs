@@ -57,8 +57,13 @@ public sealed class CoverageAssessmentService
 
     private string BuildReason(string repoPath, SalesforceConfigRequirement requirement)
     {
+        if (requirement.Type.Equals("unsupported_requirement", StringComparison.OrdinalIgnoreCase))
+        {
+            return PermissionToolingCatalog.UnsupportedRequirementMessage;
+        }
+
         var repositoryAwareHandler = _handlers.OfType<IRepositoryAwareConfigWorkItemHandler>().FirstOrDefault(h => h.CanHandle(requirement));
         if (repositoryAwareHandler != null && !string.IsNullOrWhiteSpace(repoPath)) return repositoryAwareHandler.BuildCannotHandleReason(repoPath, requirement);
-        return "Not supported.";
+        return PermissionToolingCatalog.UnsupportedRequirementMessage;
     }
 }

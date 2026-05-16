@@ -216,7 +216,7 @@ namespace eZBERP_AI_IDE
                 Size = size,
                 Text = text,
                 BackColor = Color.FromArgb(35, 35, 35),
-                ForeColor = Color.Black,
+                ForeColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle
             };
         }
@@ -635,12 +635,23 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
 
         private void ConfigureCommandInput() => txtCommandInput = new TextBox { Multiline = true, Visible = false, Enabled = false };
         private void ConfigureSendButton() { btnSend.Visible = false; btnSend.Enabled = false; }
-        private void ConfigureChatArea() { rtbChat.Location = new Point(24, 360); rtbChat.Size = new Size(1136, 300); rtbChat.ReadOnly = true; rtbChat.BackColor = Color.FromArgb(30, 30, 30); rtbChat.ForeColor = Color.White; }
-        private void ConfigureLabels() { lblRemainingBalance.Location = new Point(920, 8); lblSelectedOrg.Location = new Point(920, 30); lblSelectedRepo.Location = new Point(24, 684); lblProcessing.Location = new Point(770, 684); }
+        private void ConfigureChatArea() { rtbChat.Location = new Point(24, 360); rtbChat.Size = new Size(1136, 300); rtbChat.ReadOnly = true; rtbChat.BackColor = Color.FromArgb(30, 30, 30); rtbChat.ForeColor = Color.White; rtbChat.BorderStyle = BorderStyle.FixedSingle; }
+        private void ConfigureLabels()
+        {
+            lblRemainingBalance.Location = new Point(920, 8);
+            lblSelectedOrg.Location = new Point(920, 30);
+            lblSelectedRepo.Location = new Point(24, 684);
+            lblProcessing.Location = new Point(770, 684);
+            lblRemainingBalance.ForeColor = Color.Gainsboro;
+            lblSelectedOrg.ForeColor = Color.Gainsboro;
+            lblSelectedRepo.ForeColor = Color.Gainsboro;
+            lblProcessing.ForeColor = Color.Gainsboro;
+            lblAiProvider.ForeColor = Color.Gainsboro;
+        }
         private void ConfigureButtons() { StyleButton(btnSelectOrg); StyleButton(btnSelectRepo); StyleButton(btnReviewGitChanges); StyleButton(btnLoadJiraStories); StyleButton(btnProcessJiraStory); }
-        private void ConfigureForm() { Text = "Salesforce AI IDE - Permissions Tooling Only"; Size = new Size(1210, 760); BackColor = Color.FromArgb(45, 45, 48); }
+        private void ConfigureForm() { Text = "Salesforce AI IDE - Permissions Tooling Only"; Size = new Size(1210, 760); BackColor = Color.FromArgb(45, 45, 48); ForeColor = Color.White; FormBorderStyle = FormBorderStyle.FixedSingle; StartPosition = FormStartPosition.CenterScreen; }
         private void WireEvents() { btnSelectOrg.Click += BtnSelectOrg_Click!; btnSelectRepo.Click += BtnSelectRepo_Click!; btnReviewGitChanges.Click += BtnReviewGitChanges_Click!; btnLoadJiraStories.Click += BtnLoadJiraStories_Click!; btnProcessJiraStory.Click += BtnProcessJiraStory_Click!; }
-        private void StyleButton(Button b) { b.FlatStyle = FlatStyle.Flat; b.BackColor = Color.FromArgb(60, 60, 65); b.ForeColor = Color.White; }
+        private void StyleButton(Button b) { b.FlatStyle = FlatStyle.Flat; b.BackColor = Color.FromArgb(60, 60, 65); b.ForeColor = Color.White; b.FlatAppearance.BorderColor = Color.FromArgb(110, 110, 120); b.FlatAppearance.MouseOverBackColor = Color.FromArgb(75, 75, 82); b.FlatAppearance.MouseDownBackColor = Color.FromArgb(90, 90, 98); }
 
         private void SetProcessingState(bool p, string m = "Processing...")
         {
@@ -659,25 +670,107 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
 
         private async void BtnSelectOrg_Click(object sender, EventArgs e)
         {
-            try { var orgs = await _salesforceCliService.GetOrgListAsync(); using var d = CreateOrgSelectionDialog(orgs); d.ShowDialog(); }
-            catch (Exception ex) { MessageBox.Show(ex.Message); }
+            try
+            {
+                var orgs = await _salesforceCliService.GetOrgListAsync();
+                if (orgs.Count == 0)
+                {
+                    AppendToChat("No Salesforce orgs were found from the CLI. Check that `sf` is installed and that you are logged in.", Color.Red);
+                    MessageBox.Show("No Salesforce orgs were found. Run `sf org list --json` and confirm the CLI is authenticated.", "Org Selection", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                using var d = CreateOrgSelectionDialog(orgs);
+                d.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                AppendToChat($"Org selection failed: {ex.Message}", Color.Red);
+                MessageBox.Show(ex.Message, "Org Selection", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private Form CreateOrgSelectionDialog(IReadOnlyList<OrgInfo> orgs)
         {
-            var d = new Form { Text = "Select Org", Size = new Size(400, 300) };
-            var lb = new ListBox { Dock = DockStyle.Fill };
-            foreach (var o in orgs) lb.Items.Add(o.Alias);
-            var b = new Button { Text = "Select", Dock = DockStyle.Bottom };
-            b.Click += (_, _) => { if (lb.SelectedIndex >= 0) { _selectedOrgAlias = orgs[lb.SelectedIndex].Alias; lblSelectedOrg.Text = $"Org: {_selectedOrgAlias}"; d.DialogResult = DialogResult.OK; d.Close(); } };
-            d.Controls.Add(lb); d.Controls.Add(b); return d;
+            var d = new Form
+            {
+                Text = "Select Org",
+                Size = new Size(560, 360),
+                StartPosition = FormStartPosition.CenterParent,
+                BackColor = Color.FromArgb(45, 45, 48),
+                ForeColor = Color.White,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var infoLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 34,
+                ForeColor = Color.Gainsboro,
+                Padding = new Padding(10, 10, 10, 0),
+                Text = "Select the Salesforce org to deploy to."
+            };
+
+            var lb = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(35, 35, 35),
+                ForeColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            foreach (var o in orgs) lb.Items.Add(o);
+
+            var b = new Button { Text = "Select", Dock = DockStyle.Bottom, Height = 34 };
+            StyleButton(b);
+            b.Click += (_, _) =>
+            {
+                if (lb.SelectedItem is not OrgInfo selectedOrg)
+                {
+                    return;
+                }
+
+                _selectedOrgAlias = string.IsNullOrWhiteSpace(selectedOrg.Alias)
+                    ? selectedOrg.Username
+                    : selectedOrg.Alias;
+                lblSelectedOrg.Text = $"Selected Org: {_selectedOrgAlias}";
+                AppendToChat($"Selected org: {_selectedOrgAlias}", Color.LightGreen);
+                d.DialogResult = DialogResult.OK;
+                d.Close();
+            };
+
+            d.Controls.Add(lb);
+            d.Controls.Add(b);
+            d.Controls.Add(infoLabel);
+            return d;
         }
 
         private async void BtnLoadJiraStories_Click(object sender, EventArgs e)
         {
             SetProcessingState(true, "Loading Jira...");
-            try { var stories = await _jiraService.SearchStoriesAsync(BuildJiraStoryFilter()); _jiraStories.Clear(); foreach (var s in stories) _jiraStories.Add(s); lblJiraStatus.Text = $"{stories.Count} stories loaded"; }
-            catch (Exception ex) { AppendToChat(ex.Message, Color.Red); }
+            try
+            {
+                if (!_jiraService.IsConfigured)
+                {
+                    var message = "Jira is not configured. Please set JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN.";
+                    lblJiraStatus.Text = message;
+                    AppendToChat(message, Color.Red);
+                    return;
+                }
+
+                var filter = BuildJiraStoryFilter();
+                var stories = await _jiraService.SearchStoriesAsync(filter);
+                _jiraStories.Clear();
+                foreach (var s in stories) _jiraStories.Add(s);
+                lblJiraStatus.Text = $"{stories.Count} stories loaded";
+                AppendToChat($"Loaded {stories.Count} Jira stories.", Color.LightGreen);
+            }
+            catch (Exception ex)
+            {
+                lblJiraStatus.Text = "Failed to load Jira stories";
+                AppendToChat(ex.Message, Color.Red);
+            }
             finally { SetProcessingState(false); }
         }
 
@@ -701,7 +794,13 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
         private async void BtnSelectRepo_Click(object sender, EventArgs e)
         {
             using var d = new FolderBrowserDialog();
-            if (d.ShowDialog() == DialogResult.OK) { _selectedRepoPath = d.SelectedPath; lblSelectedRepo.Text = $"Repo: {_selectedRepoPath}"; btnReviewGitChanges.Enabled = true; }
+            if (d.ShowDialog() == DialogResult.OK)
+            {
+                _selectedRepoPath = d.SelectedPath;
+                lblSelectedRepo.Text = $"Selected Repo: {_selectedRepoPath}";
+                btnReviewGitChanges.Enabled = true;
+                AppendToChat($"Selected repo: {_selectedRepoPath}", Color.LightGreen);
+            }
         }
 
         private async Task CheckRemainingBalance() { var b = await _deepSeekClient.GetBalanceAsync(); lblRemainingBalance.Text = b.Text; }
@@ -754,6 +853,14 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
 
         private void AppendToChat(string t, Color c) { if (rtbChat.InvokeRequired) { rtbChat.Invoke(() => AppendToChat(t, c)); return; } rtbChat.SelectionStart = rtbChat.TextLength; rtbChat.SelectionColor = c; rtbChat.AppendText(t + Environment.NewLine); rtbChat.ScrollToCaret(); }
         private JiraWorkItem? GetSelectedJiraStory() => dgvJiraStories.SelectedRows.Count > 0 ? dgvJiraStories.SelectedRows[0].DataBoundItem as JiraWorkItem : null;
-        private JiraStoryFilter BuildJiraStoryFilter() => new JiraStoryFilter { SearchText = txtJiraSearch.Text, SpaceOrProject = txtJiraSpace.Text, IssueType = cmbJiraType.Text, Status = cmbJiraStatus.Text, Sprint = txtJiraSprint.Text };
+        private JiraStoryFilter BuildJiraStoryFilter() => new JiraStoryFilter
+        {
+            SearchText = txtJiraSearch.Text,
+            SpaceOrProject = txtJiraSpace.Text,
+            IssueType = cmbJiraType.Text,
+            Status = cmbJiraStatus.Text,
+            LeadConsultant = cmbJiraLeadConsultant.Text,
+            Sprint = txtJiraSprint.Text
+        };
     }
 }

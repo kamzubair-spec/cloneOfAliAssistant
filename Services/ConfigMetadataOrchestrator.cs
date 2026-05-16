@@ -136,11 +136,18 @@ public sealed class ConfigMetadataOrchestrator
     private static string NormalizeType(string type)
     {
         var value = (type ?? string.Empty).Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
-        return value switch
+        var normalized = value switch
         {
             "fls" or "field_level_security" => "profile_fls_update",
+            "profile" => "profile_metadata",
+            "permissionset" => "permission_set",
+            "custompermission" => "custom_permission",
             _ => value
         };
+
+        return PermissionToolingCatalog.IsSupportedRequirementType(normalized)
+            ? normalized
+            : "unsupported_requirement";
     }
 
     private static string NormalizeService(string service, string type)

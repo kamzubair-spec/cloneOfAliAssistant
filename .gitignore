@@ -1,0 +1,20 @@
+# 1. Ignore everything by default
+*
+
+# 2. Allow directories so Git can look for files inside them
+!*/
+
+# 3. Whitelist ONLY your significant files
+!*.cs
+!*.resx
+!*.csproj
+!*.sln
+!.gitignore
+
+# 4. Explicitly ignore build/temp folders (Safety first)
+# Even if a .cs file ends up here somehow, Git will ignore it.
+[Bb]in/
+[Oo]bj/
+.vs/
+.history/
+.vscode/

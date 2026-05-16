@@ -10,25 +10,33 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
 
     public bool CanHandle(SalesforceConfigRequirement requirement)
     {
-        return requirement.Type.Equals("profile_metadata", StringComparison.OrdinalIgnoreCase)
-               || requirement.Type.Equals("permission_set", StringComparison.OrdinalIgnoreCase)
-               || requirement.Type.Equals("custom_permission", StringComparison.OrdinalIgnoreCase)
-               || requirement.Type.Equals("profile_fls_update", StringComparison.OrdinalIgnoreCase)
-               || requirement.Type.Equals("permission_set_fls_update", StringComparison.OrdinalIgnoreCase);
+        return PermissionToolingCatalog.IsSupportedRequirementType(requirement.Type)
+               && PermissionToolingCatalog.IsSupportedPermissionType(requirement.PermissionType);
     }
 
     public bool CanHandle(string repoPath, SalesforceConfigRequirement requirement)
     {
-        return CanHandle(requirement);
+        if (!CanHandle(requirement))
+        {
+            return false;
+        }
+
+        var baseDir = Path.Combine(repoPath, "force-app", "main", "default");
+        return Directory.Exists(baseDir);
     }
 
     public string BuildCannotHandleReason(string repoPath, SalesforceConfigRequirement requirement)
     {
-        return "Only Profile, Permission Set, and Custom Permission requirements are supported.";
+        return PermissionToolingCatalog.UnsupportedRequirementMessage;
     }
 
     public async Task<FileChangeSet?> BuildChangeSetAsync(string repoPath, SalesforceConfigRequirement requirement)
     {
+        if (!CanHandle(repoPath, requirement))
+        {
+            return null;
+        }
+
         if (requirement.Type.Equals("custom_permission", StringComparison.OrdinalIgnoreCase))
         {
             return await BuildCustomPermissionChangeSetAsync(repoPath, requirement);
@@ -39,8 +47,9 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
 
         foreach (var path in targetPaths)
         {
-            var existingContent = File.Exists(path) ? await File.ReadAllTextAsync(path) : BuildDefaultXml(requirement);
-            var proposedContent = await Task.Run(() => ProcessSurgicalEdit(existingContent, requirement));
+            var scopedRequirement = ScopeRequirementForTarget(path, requirement);
+            var existingContent = File.Exists(path) ? await File.ReadAllTextAsync(path) : BuildDefaultXml(scopedRequirement, path);
+            var proposedContent = await Task.Run(() => ProcessSurgicalEdit(existingContent, scopedRequirement));
             
             proposals.Add(new FileChangeProposal(
                 Path.GetRelativePath(repoPath, path),
@@ -52,11 +61,14 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
         return new FileChangeSet($"Permission updates for {requirement.Id}", proposals);
     }
 
-    private string BuildDefaultXml(SalesforceConfigRequirement requirement)
+    private string BuildDefaultXml(SalesforceConfigRequirement requirement, string path)
     {
         if (requirement.Type.Contains("permission_set", StringComparison.OrdinalIgnoreCase))
         {
-            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<PermissionSet xmlns=\"http://soap.sforce.com/2006/04/metadata\">\n    <label>" + (requirement.Label ?? requirement.TargetMetadataName) + "</label>\n</PermissionSet>";
+            var label = string.IsNullOrWhiteSpace(requirement.Label)
+                ? BuildFallbackLabelFromFileName(path, ".permissionset-meta.xml")
+                : requirement.Label;
+            return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<PermissionSet xmlns=\"http://soap.sforce.com/2006/04/metadata\">\n<label>" + label + "</label>\n</PermissionSet>";
         }
         return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Profile xmlns=\"http://soap.sforce.com/2006/04/metadata\">\n</Profile>";
     }
@@ -70,11 +82,16 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
         {
             var dir = Path.Combine(baseDir, "permissionsets");
             if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-            
-            foreach (var name in requirement.PermissionSetNames)
+
+            var names = requirement.PermissionSetNames
+                .Concat(string.IsNullOrWhiteSpace(requirement.TargetMetadataName) ? Enumerable.Empty<string>() : new[] { requirement.TargetMetadataName })
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var name in names)
             {
-                var fileName = NormalizeFileName(name) + ".permissionset-meta.xml";
-                var fullPath = Path.Combine(dir, fileName);
+                var fullPath = ResolveMetadataPath(dir, name, ".permissionset-meta.xml", preferUnderscoreVariant: true);
                 paths.Add(fullPath);
             }
         }
@@ -87,6 +104,11 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
                 .Concat(requirement.ProfileAccess?.ReadOnlyProfiles ?? Enumerable.Empty<string>())
                 .ToList() ?? new List<string>();
 
+            if (!string.IsNullOrWhiteSpace(requirement.TargetMetadataName))
+            {
+                profileNames.Add(requirement.TargetMetadataName);
+            }
+
             if (requirement.ProfileAccess?.ApplyReadOnlyToRemainingProfiles == true)
             {
                 paths.AddRange(Directory.GetFiles(dir, "*.profile-meta.xml"));
@@ -95,8 +117,7 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
             {
                 foreach (var name in profileNames)
                 {
-                    var fileName = NormalizeFileName(name) + ".profile-meta.xml";
-                    var fullPath = Path.Combine(dir, fileName);
+                    var fullPath = ResolveMetadataPath(dir, name, ".profile-meta.xml", preferUnderscoreVariant: false);
                     paths.Add(fullPath);
                 }
             }
@@ -105,23 +126,55 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
         return paths.Distinct().ToList();
     }
 
-    private string NormalizeFileName(string name) => name.Replace(" ", "_");
+    private string ResolveMetadataPath(string directory, string metadataName, string suffix, bool preferUnderscoreVariant)
+    {
+        foreach (var candidate in BuildCandidateFileNames(metadataName, suffix, preferUnderscoreVariant))
+        {
+            var path = Path.Combine(directory, candidate);
+            if (File.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        return Path.Combine(directory, BuildCandidateFileNames(metadataName, suffix, preferUnderscoreVariant).First());
+    }
+
+    private static IEnumerable<string> BuildCandidateFileNames(string metadataName, string suffix, bool preferUnderscoreVariant)
+    {
+        var trimmed = metadataName.Trim();
+        var exact = trimmed + suffix;
+        var underscore = trimmed.Replace(" ", "_") + suffix;
+        var space = trimmed.Replace("_", " ") + suffix;
+
+        if (preferUnderscoreVariant)
+        {
+            yield return underscore;
+            if (!exact.Equals(underscore, StringComparison.OrdinalIgnoreCase)) yield return exact;
+            if (!space.Equals(underscore, StringComparison.OrdinalIgnoreCase) && !space.Equals(exact, StringComparison.OrdinalIgnoreCase)) yield return space;
+            yield break;
+        }
+
+        yield return exact;
+        if (!space.Equals(exact, StringComparison.OrdinalIgnoreCase)) yield return space;
+        if (!underscore.Equals(exact, StringComparison.OrdinalIgnoreCase) && !underscore.Equals(space, StringComparison.OrdinalIgnoreCase)) yield return underscore;
+    }
 
     private async Task<FileChangeSet?> BuildCustomPermissionChangeSetAsync(string repoPath, SalesforceConfigRequirement requirement)
     {
-        var name = requirement.TargetMetadataName ?? requirement.Label;
-        var relativePath = Path.Combine("force-app", "main", "default", "customPermissions", $"{name}.customPermission-meta.xml");
-        var path = Path.Combine(repoPath, relativePath);
+        var name = string.IsNullOrWhiteSpace(requirement.TargetMetadataName) ? requirement.Label : requirement.TargetMetadataName;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var customPermissionDirectory = Path.Combine(repoPath, "force-app", "main", "default", "customPermissions");
+        Directory.CreateDirectory(customPermissionDirectory);
+        var path = ResolveMetadataPath(customPermissionDirectory, name, ".customPermission-meta.xml", preferUnderscoreVariant: true);
+        var relativePath = Path.GetRelativePath(repoPath, path);
         
         var existing = File.Exists(path) ? await File.ReadAllTextAsync(path) : string.Empty;
-        var proposed = $"""
-        <?xml version="1.0" encoding="UTF-8"?>
-        <CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
-            <isLicensed>false</isLicensed>
-            <label>{requirement.Label ?? name}</label>
-            <description>{requirement.Description}</description>
-        </CustomPermission>
-        """;
+        var proposed = BuildCustomPermissionContent(existing, requirement, name);
 
         return new FileChangeSet(
             $"Custom permission {name}",
@@ -137,7 +190,7 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
         return MergeBlock(content, newBlock, tagInfo, requirement);
     }
 
-    private record TagInfo(string OuterTag, string KeyTag, string ValueTag, string RootTag);
+    private record TagInfo(string OuterTag, string KeyTag, string? ValueTag, string RootTag);
 
     private TagInfo? GetTagInfo(SalesforceConfigRequirement requirement)
     {
@@ -166,7 +219,7 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
 
         if (info.OuterTag == "fieldPermissions")
         {
-            var editable = requirement.PermissionValue?.ToLowerInvariant() == "true" || (requirement.ProfileAccess?.EditableProfiles.Count > 0);
+            var editable = requirement.PermissionValue?.ToLowerInvariant() == "true";
             return $"<{info.OuterTag}><editable>{editable.ToString().ToLowerInvariant()}</editable><field>{key}</field><readable>true</readable></{info.OuterTag}>";
         }
 
@@ -225,5 +278,158 @@ public sealed class PermissionManagementService : IRepositoryAwareConfigWorkItem
     {
         var match = Regex.Match(block, $@"<{tagName}>(.*?)</{tagName}>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
         return match.Success ? match.Groups[1].Value.Trim() : null;
+    }
+
+    private SalesforceConfigRequirement ScopeRequirementForTarget(string path, SalesforceConfigRequirement requirement)
+    {
+        if (!requirement.Type.StartsWith("profile", StringComparison.OrdinalIgnoreCase))
+        {
+            return requirement;
+        }
+
+        var profileAccess = requirement.ProfileAccess;
+        if (profileAccess == null)
+        {
+            return requirement;
+        }
+
+        var profileName = Path.GetFileName(path).Replace(".profile-meta.xml", string.Empty, StringComparison.OrdinalIgnoreCase);
+        var editable = profileAccess.EditableProfiles.Any(name => name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+        var readOnly = profileAccess.ReadOnlyProfiles.Any(name => name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+        var applyReadOnlyFallback = profileAccess.ApplyReadOnlyToRemainingProfiles && !editable;
+
+        if (!editable && !readOnly && !applyReadOnlyFallback)
+        {
+            return requirement;
+        }
+
+        return CloneRequirement(requirement, editable ? "true" : "false", profileName);
+    }
+
+    private SalesforceConfigRequirement CloneRequirement(SalesforceConfigRequirement requirement, string permissionValue, string targetMetadataName)
+    {
+        return new SalesforceConfigRequirement
+        {
+            Id = requirement.Id,
+            Type = requirement.Type,
+            Service = requirement.Service,
+            Operation = requirement.Operation,
+            ObjectApiName = requirement.ObjectApiName,
+            FieldApiName = requirement.FieldApiName,
+            FieldType = requirement.FieldType,
+            Label = requirement.Label,
+            Length = requirement.Length,
+            Required = requirement.Required,
+            DefaultValue = requirement.DefaultValue,
+            InlineHelpText = requirement.InlineHelpText,
+            Description = requirement.Description,
+            FieldDescription = requirement.FieldDescription,
+            Formula = requirement.Formula,
+            FormulaReturnType = requirement.FormulaReturnType,
+            ExistingFieldApiName = requirement.ExistingFieldApiName,
+            TargetMetadataName = targetMetadataName,
+            TargetSectionLabel = requirement.TargetSectionLabel,
+            ReplaceFieldApiName = requirement.ReplaceFieldApiName,
+            VisibilityConditionSummary = requirement.VisibilityConditionSummary,
+            PreferredTargetType = requirement.PreferredTargetType,
+            TargetRegionOrComponent = requirement.TargetRegionOrComponent,
+            TargetLayoutOrPageLabel = requirement.TargetLayoutOrPageLabel,
+            ValidationRuleName = requirement.ValidationRuleName,
+            ErrorMessage = requirement.ErrorMessage,
+            ErrorLocation = requirement.ErrorLocation,
+            PermissionType = requirement.PermissionType,
+            PermissionValue = permissionValue,
+            PicklistValues = new List<string>(requirement.PicklistValues),
+            PicklistEntries = requirement.PicklistEntries.Select(item => new PicklistValueRequirement
+            {
+                ApiValue = item.ApiValue,
+                Label = item.Label,
+                Default = item.Default,
+                ControllingValues = new List<string>(item.ControllingValues)
+            }).ToList(),
+            PicklistRenames = requirement.PicklistRenames.Select(item => new PicklistValueRenameRequirement
+            {
+                CurrentApiValue = item.CurrentApiValue,
+                CurrentLabel = item.CurrentLabel,
+                NewLabel = item.NewLabel
+            }).ToList(),
+            KeepPicklistValuesInOrder = requirement.KeepPicklistValuesInOrder,
+            AddGlobalValueSetValuesToAllRecordTypes = requirement.AddGlobalValueSetValuesToAllRecordTypes,
+            PermissionSetNames = new List<string>(requirement.PermissionSetNames),
+            CustomMetadataTypeApiName = requirement.CustomMetadataTypeApiName,
+            RecordDeveloperName = requirement.RecordDeveloperName,
+            CustomMetadataValues = new Dictionary<string, string>(requirement.CustomMetadataValues, StringComparer.OrdinalIgnoreCase),
+            ProfileAccess = requirement.ProfileAccess,
+            SuggestedFiles = new List<string>(requirement.SuggestedFiles),
+            SuggestedTriggerEvent = requirement.SuggestedTriggerEvent,
+            SuggestedHelperMethodName = requirement.SuggestedHelperMethodName,
+            ImplementationStrategy = requirement.ImplementationStrategy,
+            ImplementationKind = requirement.ImplementationKind,
+            EventInvocation = requirement.EventInvocation,
+            HelperMethodCode = requirement.HelperMethodCode,
+            TestMethodName = requirement.TestMethodName,
+            TestMethodCode = requirement.TestMethodCode,
+            RequiresSecondAiPass = requirement.RequiresSecondAiPass
+        };
+    }
+
+    private string BuildCustomPermissionContent(string existing, SalesforceConfigRequirement requirement, string name)
+    {
+        if (string.IsNullOrWhiteSpace(existing))
+        {
+            return $"""
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomPermission xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>{EscapeXml(requirement.Description)}</description>
+    <isLicensed>false</isLicensed>
+    <label>{EscapeXml(string.IsNullOrWhiteSpace(requirement.Label) ? name : requirement.Label)}</label>
+</CustomPermission>
+""";
+        }
+
+        var updated = ReplaceOrInsertSimpleTag(existing, "description", requirement.Description);
+        updated = ReplaceOrInsertSimpleTag(updated, "isLicensed", "false");
+        updated = ReplaceOrInsertSimpleTag(updated, "label", string.IsNullOrWhiteSpace(requirement.Label) ? name : requirement.Label);
+        return updated;
+    }
+
+    private string ReplaceOrInsertSimpleTag(string content, string tagName, string value)
+    {
+        var escapedValue = EscapeXml(value ?? string.Empty);
+        var replacement = $"    <{tagName}>{escapedValue}</{tagName}>";
+        var pattern = $@"^\s*<{tagName}>.*?</{tagName}>\s*$";
+
+        if (Regex.IsMatch(content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase))
+        {
+            return Regex.Replace(content, pattern, replacement, RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        }
+
+        var closingTagIndex = content.IndexOf("</CustomPermission>", StringComparison.OrdinalIgnoreCase);
+        if (closingTagIndex < 0)
+        {
+            return content;
+        }
+
+        var orderedTags = new[] { "description", "isLicensed", "label" };
+        var insertBeforeTag = orderedTags
+            .SkipWhile(tag => !tag.Equals(tagName, StringComparison.OrdinalIgnoreCase))
+            .Skip(1)
+            .Select(tag => content.IndexOf($"<{tag}>", StringComparison.OrdinalIgnoreCase))
+            .Where(index => index >= 0)
+            .DefaultIfEmpty(closingTagIndex)
+            .Min();
+
+        return content.Insert(insertBeforeTag, replacement + Environment.NewLine);
+    }
+
+    private static string EscapeXml(string value)
+    {
+        return System.Security.SecurityElement.Escape(value) ?? string.Empty;
+    }
+
+    private static string BuildFallbackLabelFromFileName(string path, string suffix)
+    {
+        var fileName = Path.GetFileName(path);
+        return fileName.Replace(suffix, string.Empty, StringComparison.OrdinalIgnoreCase).Replace("_", " ");
     }
 }

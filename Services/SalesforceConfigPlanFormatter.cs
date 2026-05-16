@@ -65,15 +65,22 @@ public static class SalesforceConfigPlanFormatter
         return req.Type switch
         {
             "profile_metadata" or "profile_fls_update" => $"Profile: {req.TargetMetadataName ?? "Multiple"}",
-            "permission_set" or "permission_set_fls_update" => $"Permission Set: {string.Join(", ", req.PermissionSetNames)}",
+            "permission_set" or "permission_set_fls_update" => $"Permission Set: {BuildPermissionSetHeadline(req)}",
             "custom_permission" => $"Custom Permission: {req.Label ?? req.TargetMetadataName}",
-            "unsupported_requirement" => $"[UNSUPPORTED] {req.Label ?? req.Description}",
+            "unsupported_requirement" => $"[UNSUPPORTED] {req.Label ?? req.TargetMetadataName ?? req.Description}",
             _ => req.Label ?? req.Description ?? req.Id
         };
     }
 
     public static string BuildRequirementDetail(SalesforceConfigRequirement req)
     {
+        if (req.Type.Equals("unsupported_requirement", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(req.Description)
+                ? PermissionToolingCatalog.UnsupportedRequirementMessage
+                : req.Description;
+        }
+
         var sb = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(req.PermissionType)) sb.Append($"Type: {req.PermissionType}. ");
         if (!string.IsNullOrWhiteSpace(req.ObjectApiName)) sb.Append($"Object: {req.ObjectApiName}. ");
@@ -82,5 +89,16 @@ public static class SalesforceConfigPlanFormatter
         if (!string.IsNullOrWhiteSpace(req.Description)) sb.Append(req.Description);
         
         return sb.ToString().Trim();
+    }
+
+    private static string BuildPermissionSetHeadline(SalesforceConfigRequirement req)
+    {
+        var names = req.PermissionSetNames?.Where(name => !string.IsNullOrWhiteSpace(name)).ToList() ?? new List<string>();
+        if (names.Count > 0)
+        {
+            return string.Join(", ", names);
+        }
+
+        return string.IsNullOrWhiteSpace(req.TargetMetadataName) ? "Multiple" : req.TargetMetadataName;
     }
 }
