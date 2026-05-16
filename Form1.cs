@@ -635,38 +635,225 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
 
         private void ConfigureCommandInput() => txtCommandInput = new TextBox { Multiline = true, Visible = false, Enabled = false };
         private void ConfigureSendButton() { btnSend.Visible = false; btnSend.Enabled = false; }
-        private void ConfigureChatArea() { rtbChat.Location = new Point(24, 360); rtbChat.Size = new Size(1136, 300); rtbChat.ReadOnly = true; rtbChat.BackColor = Color.FromArgb(30, 30, 30); rtbChat.ForeColor = Color.White; rtbChat.BorderStyle = BorderStyle.FixedSingle; }
+        private void ConfigureChatArea()
+        {
+            rtbChat.Location = new Point(24, 360);
+            rtbChat.Size = new Size(1136, 300);
+            rtbChat.Font = new Font("Consolas", 9);
+            rtbChat.BackColor = Color.FromArgb(30, 30, 30);
+            rtbChat.ForeColor = Color.FromArgb(220, 220, 220);
+            rtbChat.BorderStyle = BorderStyle.None;
+            rtbChat.ReadOnly = true;
+        }
+
         private void ConfigureLabels()
         {
+            lblRemainingBalance.ForeColor = Color.Gold;
+            lblRemainingBalance.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            lblSelectedOrg.ForeColor = Color.LightGray;
+            lblSelectedRepo.ForeColor = Color.LightGray;
+            lblProcessing.ForeColor = Color.LightSkyBlue;
+            lblAiProvider.ForeColor = Color.White;
+            lblSelectedRepo.Location = new Point(24, 684);
+            lblProcessing.AutoSize = false;
+            lblProcessing.Location = new Point(770, 684);
+            lblProcessing.TextAlign = ContentAlignment.MiddleLeft;
+            lblProcessing.UseMnemonic = false;
+
+            InitializeLoadingImage();
+            AlignProcessingIndicator();
+            InitializeAiLogo();
+            picAiLogo.Location = new Point(430, 20);
+            lblAiProvider.Location = new Point(470, 28);
             lblRemainingBalance.Location = new Point(920, 8);
             lblSelectedOrg.Location = new Point(920, 30);
-            lblSelectedRepo.Location = new Point(24, 684);
-            lblProcessing.Location = new Point(770, 684);
-            lblRemainingBalance.ForeColor = Color.Gainsboro;
-            lblSelectedOrg.ForeColor = Color.Gainsboro;
-            lblSelectedRepo.ForeColor = Color.Gainsboro;
-            lblProcessing.ForeColor = Color.Gainsboro;
-            lblAiProvider.ForeColor = Color.Gainsboro;
         }
-        private void ConfigureButtons() { StyleButton(btnSelectOrg); StyleButton(btnSelectRepo); StyleButton(btnReviewGitChanges); StyleButton(btnLoadJiraStories); StyleButton(btnProcessJiraStory); }
-        private void ConfigureForm() { Text = "Salesforce AI IDE - Permissions Tooling Only"; Size = new Size(1210, 760); BackColor = Color.FromArgb(45, 45, 48); ForeColor = Color.White; FormBorderStyle = FormBorderStyle.FixedSingle; StartPosition = FormStartPosition.CenterScreen; }
+
+        private void InitializeAiLogo()
+        {
+            var isOpenAi = AiProviderSettings.Provider == AiProvider.OpenAI;
+            var pathVar = isOpenAi ? "OPENAI_LOGO_PATH" : "DEEPSEEK_LOGO_PATH";
+            var path = GetEnvironmentSetting(pathVar, string.Empty);
+            var sizePx = GetAiLogoSizePx();
+
+            lblAiProvider.Text = isOpenAi ? "Powered by OpenAI" : "Powered by DeepSeek";
+            picAiLogo.Size = new Size(sizePx, sizePx);
+            picAiLogo.SizeMode = PictureBoxSizeMode.Zoom;
+
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                try
+                {
+                    picAiLogo.Image = Image.FromFile(path);
+                }
+                catch
+                {
+                    // Keep default empty state if logo loading fails.
+                }
+            }
+        }
+
+        private static int GetAiLogoSizePx()
+        {
+            var rawSize = GetEnvironmentSetting("LOG_SIZE", "32")
+                .Replace("px", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Trim();
+
+            return int.TryParse(rawSize, out var size) && size is >= 12 and <= 160
+                ? size
+                : 32;
+        }
+
+        private void InitializeLoadingImage()
+        {
+            var path = GetEnvironmentSetting("EZBERP_LOADING_GIF_PATH", string.Empty);
+            var sizePx = GetLoadingImageSizePx();
+
+            picLoading.Size = new Size(sizePx, sizePx);
+            picLoading.SizeMode = PictureBoxSizeMode.Zoom;
+            picLoading.Visible = false;
+
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                try
+                {
+                    picLoading.Image = Image.FromFile(path);
+                }
+                catch
+                {
+                    // Keep default empty state if loading image fails.
+                }
+            }
+        }
+
+        private static int GetLoadingImageSizePx()
+        {
+            var rawSize = GetEnvironmentSetting("EZBERP_LOADING_GIF_SIZE", "44")
+                .Replace("px", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Trim();
+
+            return int.TryParse(rawSize, out var size) && size is >= 12 and <= 160
+                ? size
+                : 44;
+        }
+
+        private void ConfigureButtons()
+        {
+            StyleButton(btnSelectOrg);
+            StyleButton(btnSelectRepo);
+            StyleButton(btnReviewGitChanges);
+            StyleButton(btnLoadJiraStories);
+            StyleButton(btnProcessJiraStory);
+        }
+
+        private void ConfigureForm()
+        {
+            Text = "Salesforce AI - Assistant [Config Only - No Apex/Aura/LWC/VF Pages] - Beta Version 1.0";
+            Size = new Size(1210, 760);
+            StartPosition = FormStartPosition.CenterScreen;
+            BackColor = Color.FromArgb(45, 45, 48);
+            ForeColor = Color.White;
+            FormBorderStyle = FormBorderStyle.FixedSingle;
+            Resize += (_, _) => AlignProcessingIndicator();
+        }
+
         private void WireEvents() { btnSelectOrg.Click += BtnSelectOrg_Click!; btnSelectRepo.Click += BtnSelectRepo_Click!; btnReviewGitChanges.Click += BtnReviewGitChanges_Click!; btnLoadJiraStories.Click += BtnLoadJiraStories_Click!; btnProcessJiraStory.Click += BtnProcessJiraStory_Click!; }
-        private void StyleButton(Button b) { b.FlatStyle = FlatStyle.Flat; b.BackColor = Color.FromArgb(60, 60, 65); b.ForeColor = Color.White; b.FlatAppearance.BorderColor = Color.FromArgb(110, 110, 120); b.FlatAppearance.MouseOverBackColor = Color.FromArgb(75, 75, 82); b.FlatAppearance.MouseDownBackColor = Color.FromArgb(90, 90, 98); }
+
+        private void StyleButton(Button b)
+        {
+            b.FlatStyle = FlatStyle.Flat;
+            b.FlatAppearance.BorderSize = 1;
+            b.FlatAppearance.BorderColor = Color.FromArgb(85, 85, 85);
+            b.BackColor = Color.FromArgb(60, 60, 65);
+            b.ForeColor = Color.White;
+        }
 
         private void SetProcessingState(bool p, string m = "Processing...")
         {
-            picLoading.Visible = p; lblProcessing.Visible = p; lblProcessing.Text = m;
-            btnSelectOrg.Enabled = !p; btnSelectRepo.Enabled = !p; btnLoadJiraStories.Enabled = !p;
+            picLoading.Visible = p;
+            lblProcessing.Visible = p;
+            lblProcessing.Text = m;
+            AlignProcessingIndicator();
+
+            btnSend.Enabled = false;
+            txtCommandInput.Enabled = false;
+            btnSelectOrg.Enabled = !p;
+            btnSelectRepo.Enabled = !p;
             btnReviewGitChanges.Enabled = !p && !string.IsNullOrWhiteSpace(_selectedRepoPath);
+            btnLoadJiraStories.Enabled = !p;
             btnProcessJiraStory.Enabled = !p && dgvJiraStories.SelectedRows.Count > 0;
+
+            txtJiraSearch.Enabled = !p;
+            txtJiraSpace.Enabled = !p;
+            txtJiraSprint.Enabled = !p;
+            cmbJiraType.Enabled = !p;
+            cmbJiraStatus.Enabled = !p;
+            cmbJiraLeadConsultant.Enabled = !p;
             dgvJiraStories.Enabled = !p;
+
+            ForceJiraFilterColors();
         }
 
-        private void ReportProcessingStep(string m) { if (InvokeRequired) { BeginInvoke(new Action(() => ReportProcessingStep(m))); return; } lblProcessing.Text = m; AppendToChat(m, Color.LightBlue); }
-        private void AlignProcessingIndicator() { }
-        private void InitializeAiLogo() { }
-        private void InitializeLoadingImage() { }
-        private void InitializeEngine() { AppendToChat("Permissions Engine Initialized.", Color.Gray); _balanceCheckTimer = new System.Windows.Forms.Timer { Interval = BalanceCheckIntervalMs }; _balanceCheckTimer.Tick += async (_, _) => await CheckRemainingBalance(); _balanceCheckTimer.Start(); _ = CheckRemainingBalance(); }
+        private void ReportProcessingStep(string m)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => ReportProcessingStep(m)));
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(m))
+            {
+                return;
+            }
+
+            lblProcessing.Visible = true;
+            lblProcessing.Text = m;
+            AlignProcessingIndicator();
+            AppendToChat(m, Color.LightBlue);
+        }
+
+        private void AlignProcessingIndicator()
+        {
+            if (picLoading is null || lblProcessing is null)
+            {
+                return;
+            }
+
+            const int bottomMargin = 1;
+            const int rightMargin = 24;
+            const int gap = 8;
+            const int messageWidth = 420;
+
+            var iconSize = picLoading.Width > 0 ? picLoading.Width : GetLoadingImageSizePx();
+            var y = Math.Max(0, ClientSize.Height - iconSize - bottomMargin);
+            var labelX = Math.Max(24, ClientSize.Width - rightMargin - messageWidth);
+            var iconX = Math.Max(24, labelX - gap - iconSize);
+
+            picLoading.Location = new Point(iconX, y);
+            lblProcessing.Location = new Point(labelX, y);
+            lblProcessing.Size = new Size(Math.Max(120, ClientSize.Width - labelX - rightMargin), iconSize);
+        }
+
+        private void InitializeEngine()
+        {
+            var raw = AiProviderSettings.GetSetting("AI_PROVIDER", "");
+            var source = AiProviderSettings.GetSettingSource("AI_PROVIDER");
+            if (source == "None/Fallback")
+            {
+                source = AiProviderSettings.GetSettingSource("AI_PROVIDER");
+            }
+
+            AppendToChat($"AI Engine initialized: {AiProviderSettings.ProviderDisplayName} (Value: '{raw}', Source: {source})", Color.Gray);
+
+            _balanceCheckTimer = new System.Windows.Forms.Timer
+            {
+                Interval = BalanceCheckIntervalMs
+            };
+            _balanceCheckTimer.Tick += async (_, _) => await CheckRemainingBalance();
+            _balanceCheckTimer.Start();
+            _ = CheckRemainingBalance();
+        }
 
         private async void BtnSelectOrg_Click(object sender, EventArgs e)
         {
@@ -765,6 +952,12 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
                 foreach (var s in stories) _jiraStories.Add(s);
                 lblJiraStatus.Text = $"{stories.Count} stories loaded";
                 AppendToChat($"Loaded {stories.Count} Jira stories.", Color.LightGreen);
+                AppendToChat($"Jira JQL: {_jiraService.LastSearchJql}", Color.Gray);
+
+                if (stories.Count == 0)
+                {
+                    AppendToChat("Jira returned no stories for the current filters.", Color.Yellow);
+                }
             }
             catch (Exception ex)
             {
