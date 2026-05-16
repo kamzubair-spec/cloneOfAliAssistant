@@ -10,8 +10,7 @@
 !*.csproj
 !*.sln
 !.gitignore
-# Ignore generated assembly files
-*AssemblyInfo.cs
+
 # Re-ignore generated/build folders
 obj/
 bin/
