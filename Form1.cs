@@ -65,7 +65,9 @@ namespace eZBERP_AI_IDE
             _jiraService = new JiraService();
             _configMetadataOrchestrator = new ConfigMetadataOrchestrator(new IConfigWorkItemHandler[]
             {
-                new PermissionManagementService()
+                new ProfileEditingService(),
+                new PermissionSetEditingService(),
+                new CustomPermissionEditingService()
             }, _deepSeekClient, ReportProcessingStep);
             InitializeComponent();
             InitializeCustomComponents();
@@ -383,7 +385,7 @@ namespace eZBERP_AI_IDE
             {
                 var storyContent = await _jiraService.GetStoryAnalysisContentAsync(story.Key);
                 var imageBlocks = storyContent.Blocks
-                    .Where(block => block.Kind.Equals("image", StringComparison.OrdinalIgnoreCase))
+                    .Where(block => block.Kind.Equals("image", StringComparison.OrdinalIgnoreCase) && block.IsInlineImage)
                     .ToList();
                 var diagnostic = await _storyAnalyzerService.DescribeInlineImagesAsync(storyContent);
                 SetJiraPreviewHtml(BuildImageReadingDiagnosticHtml(story, imageBlocks, diagnostic));
@@ -426,8 +428,14 @@ namespace eZBERP_AI_IDE
 
             if (showProgress)
             {
-                var analysisProvider = storyContent.HasInlineImages && AiProviderSettings.UseOpenAiForInlineImages
-                    ? $"Asking OpenAI vision to extract Salesforce requirements from {storyContent.Blocks.Count(block => block.Kind.Equals("image", StringComparison.OrdinalIgnoreCase))} inline image(s)..."
+                var readableInlineImageCount = storyContent.Blocks.Count(block =>
+                    block.Kind.Equals("image", StringComparison.OrdinalIgnoreCase)
+                    && block.IsInlineImage
+                    && !string.IsNullOrWhiteSpace(block.LocalPath)
+                    && File.Exists(block.LocalPath));
+
+                var analysisProvider = storyContent.HasReadableInlineImages && AiProviderSettings.UseOpenAiForInlineImages
+                    ? $"Asking OpenAI vision to extract Salesforce requirements from {readableInlineImageCount} inline image(s)..."
                     : "Asking AI to extract Salesforce config requirements from the story...";
                 ShowCoverageProgress(story, 2, analysisProvider);
             }
@@ -580,7 +588,16 @@ h1 {{ margin-top:0; font-size:20px; color:#102a43; }}
         {
             var imageRows = imageBlocks.Count == 0
                 ? "<li>No image blocks were found.</li>"
-                : string.Join(Environment.NewLine, imageBlocks.Select(block => $"<li><strong>{WebUtility.HtmlEncode(block.FileName)}</strong><br><code>{WebUtility.HtmlEncode(block.LocalPath)}</code></li>"));
+                : string.Join(Environment.NewLine, imageBlocks.Select(block =>
+                {
+                    var hasLocalFile = !string.IsNullOrWhiteSpace(block.LocalPath) && File.Exists(block.LocalPath);
+                    var previewHtml = hasLocalFile
+                        ? $"<div style=\"margin:10px 0\"><img src=\"{WebUtility.HtmlEncode(new Uri(block.LocalPath).AbsoluteUri)}\" style=\"max-width:100%;max-height:260px;border:1px solid #d9e2ec;border-radius:6px\" /></div>"
+                        : "<div style=\"margin:10px 0;color:#b42318\">No readable local image file was available for this block.</div>";
+                    var readiness = hasLocalFile ? "Ready for vision payload" : "Not sent to vision";
+
+                    return $"<li><strong>{WebUtility.HtmlEncode(block.FileName)}</strong><br><span>{WebUtility.HtmlEncode(readiness)}</span><br><code>{WebUtility.HtmlEncode(block.LocalPath)}</code>{previewHtml}</li>";
+                }));
 
             return $@"<!doctype html><html><head><meta charset=""utf-8""><style>
 body {{ font-family: Segoe UI, Arial, sans-serif; background:#f5f7fb; color:#1f2933; margin:0; padding:24px; }}
@@ -946,23 +963,24 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
                     return;
                 }
 
-                var filter = BuildJiraStoryFilter();
-                var stories = await _jiraService.SearchStoriesAsync(filter);
-                _jiraStories.Clear();
-                foreach (var s in stories) _jiraStories.Add(s);
-                lblJiraStatus.Text = $"{stories.Count} stories loaded";
-                AppendToChat($"Loaded {stories.Count} Jira stories.", Color.LightGreen);
+                AppendToChat("Preparing Jira search request...", Color.Gray);
+                var stories = await _jiraService.SearchStoriesAsync(BuildJiraStoryFilter());
                 AppendToChat($"Jira JQL: {_jiraService.LastSearchJql}", Color.Gray);
+                AppendToChat($"Jira returned {_jiraService.LastSearchResultCount} story row(s).", Color.Gray);
 
-                if (stories.Count == 0)
+                _jiraStories.Clear();
+                foreach (var s in stories)
                 {
-                    AppendToChat("Jira returned no stories for the current filters.", Color.Yellow);
+                    _jiraStories.Add(s);
                 }
+
+                lblJiraStatus.Text = $"Jira stories: {stories.Count} loaded";
+                AppendToChat($"Loaded {stories.Count} Jira stories.", Color.LightGreen);
             }
             catch (Exception ex)
             {
-                lblJiraStatus.Text = "Failed to load Jira stories";
-                AppendToChat(ex.Message, Color.Red);
+                lblJiraStatus.Text = "Jira stories: load failed";
+                AppendToChat($"Jira Error: {ex.Message}", Color.Red);
             }
             finally { SetProcessingState(false); }
         }
@@ -1046,14 +1064,17 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
 
         private void AppendToChat(string t, Color c) { if (rtbChat.InvokeRequired) { rtbChat.Invoke(() => AppendToChat(t, c)); return; } rtbChat.SelectionStart = rtbChat.TextLength; rtbChat.SelectionColor = c; rtbChat.AppendText(t + Environment.NewLine); rtbChat.ScrollToCaret(); }
         private JiraWorkItem? GetSelectedJiraStory() => dgvJiraStories.SelectedRows.Count > 0 ? dgvJiraStories.SelectedRows[0].DataBoundItem as JiraWorkItem : null;
-        private JiraStoryFilter BuildJiraStoryFilter() => new JiraStoryFilter
+        private JiraStoryFilter BuildJiraStoryFilter()
         {
-            SearchText = txtJiraSearch.Text,
-            SpaceOrProject = txtJiraSpace.Text,
-            IssueType = cmbJiraType.Text,
-            Status = cmbJiraStatus.Text,
-            LeadConsultant = cmbJiraLeadConsultant.Text,
-            Sprint = txtJiraSprint.Text
-        };
+            return new JiraStoryFilter
+            {
+                SearchText = txtJiraSearch.Text.Trim().Equals("Search work", StringComparison.OrdinalIgnoreCase) ? string.Empty : txtJiraSearch.Text.Trim(),
+                SpaceOrProject = txtJiraSpace.Text.Trim(),
+                IssueType = cmbJiraType.Text.Trim(),
+                Status = cmbJiraStatus.Text.Trim(),
+                LeadConsultant = cmbJiraLeadConsultant.Text.Trim(),
+                Sprint = txtJiraSprint.Text.Trim()
+            };
+        }
     }
 }

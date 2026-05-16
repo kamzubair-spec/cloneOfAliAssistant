@@ -660,7 +660,8 @@ pre { white-space: pre-wrap; font-family: Consolas, monospace; }
                 Kind = "image",
                 FileName = WebUtility.HtmlDecode(string.IsNullOrWhiteSpace(fileName) ? attachment?.FileName ?? "inline image" : fileName),
                 MimeType = attachment?.MimeType ?? GuessMimeTypeFromPath(localPath),
-                LocalPath = localPath
+                LocalPath = localPath,
+                IsInlineImage = true
             });
 
             lastIndex = match.Index + match.Length;
