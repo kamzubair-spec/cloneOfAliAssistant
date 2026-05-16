@@ -11,6 +11,9 @@
 !*.sln
 !.gitignore
 
+# Re-ignore generated C# files
+*.AssemblyInfo.cs
+**/*.AssemblyInfo.cs
 # Re-ignore generated/build folders
 obj/
 bin/
