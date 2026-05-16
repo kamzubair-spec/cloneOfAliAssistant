@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "/e09ce61y2g=",
+  "dgSpecHash": "rZ68ymrWT5M=",
   "success": true,
   "projectFilePath": "C:\\Users\\s.zubair\\source\\repos\\cloneOfAliAssistant\\eZBERP AI IDE.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\s.zubair\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.15\\microsoft.netcore.app.ref.9.0.15.nupkg.sha512",
     "C:\\Users\\s.zubair\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.15\\microsoft.windowsdesktop.app.ref.9.0.15.nupkg.sha512",
+    "C:\\Users\\s.zubair\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.15\\microsoft.netcore.app.ref.9.0.15.nupkg.sha512",
     "C:\\Users\\s.zubair\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.15\\microsoft.aspnetcore.app.ref.9.0.15.nupkg.sha512",
     "C:\\Users\\s.zubair\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\9.0.15\\microsoft.netcore.app.host.win-x64.9.0.15.nupkg.sha512"
   ],
