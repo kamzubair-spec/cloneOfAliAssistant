@@ -1,0 +1,30 @@
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\bin\Debug\net10.0-windows\eZBERP AI IDE.deps.json
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\bin\Debug\net10.0-windows\eZBERP AI IDE.runtimeconfig.json
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\bin\Debug\net10.0-windows\eZBERP AI IDE.dll
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\bin\Debug\net10.0-windows\eZBERP AI IDE.pdb
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP_AI_IDE.Form1.resources
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.csproj.GenerateResource.cache
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.AssemblyInfoInputs.cache
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.AssemblyInfo.cs
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.csproj.CoreCompileInputs.cache
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.dll
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\refint\eZBERP AI IDE.dll
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.pdb
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.genruntimeconfig.cache
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\ref\eZBERP AI IDE.dll
+C:\Temp\ezberp-ai-ide-build\Debug\net10.0-windows\eZBERP AI IDE.deps.json
+C:\Temp\ezberp-ai-ide-build\Debug\net10.0-windows\eZBERP AI IDE.runtimeconfig.json
+C:\Temp\ezberp-ai-ide-build\Debug\net10.0-windows\eZBERP AI IDE.dll
+C:\Temp\ezberp-ai-ide-build\Debug\net10.0-windows\eZBERP AI IDE.pdb
+C:\Temp\ezberp-ai-ide-buildDebug\net10.0-windows\eZBERP AI IDE.deps.json
+C:\Temp\ezberp-ai-ide-buildDebug\net10.0-windows\eZBERP AI IDE.runtimeconfig.json
+C:\Temp\ezberp-ai-ide-buildDebug\net10.0-windows\eZBERP AI IDE.dll
+C:\Temp\ezberp-ai-ide-buildDebug\net10.0-windows\eZBERP AI IDE.pdb
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP AI IDE.sourcelink.json
+C:\Temp\ezberp-review-buildDebug\net10.0-windows\eZBERP AI IDE.deps.json
+C:\Temp\ezberp-review-buildDebug\net10.0-windows\eZBERP AI IDE.runtimeconfig.json
+C:\Temp\ezberp-review-buildDebug\net10.0-windows\eZBERP AI IDE.dll
+C:\Temp\ezberp-review-buildDebug\net10.0-windows\eZBERP AI IDE.pdb
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\obj\Debug\net10.0-windows\eZBERP_AI_IDE.GitReviewForm.resources
+C:\Users\s.zubair\source\repos\eZBERP AI IDE\eZBERP AI IDE\bin\Debug\net10.0-windows\eZBERP AI IDE.exe
