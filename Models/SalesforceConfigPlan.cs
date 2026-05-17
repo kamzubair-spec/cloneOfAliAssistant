@@ -16,6 +16,9 @@ public sealed class SalesforceConfigRequirement
     public string ObjectApiName { get; set; } = string.Empty;
     public string FieldApiName { get; set; } = string.Empty;
     public string FieldType { get; set; } = string.Empty;
+    public int? Precision { get; set; }
+    public int? Scale { get; set; }
+    public int? VisibleLines { get; set; }
     public string Label { get; set; } = string.Empty;
     public int? Length { get; set; }
     public bool? Required { get; set; }
@@ -38,6 +41,19 @@ public sealed class SalesforceConfigRequirement
     public string ErrorLocation { get; set; } = string.Empty;
     public string PermissionType { get; set; } = string.Empty;
     public string PermissionValue { get; set; } = string.Empty;
+    public string ValueSetSource { get; set; } = string.Empty;
+    public string GlobalValueSetName { get; set; } = string.Empty;
+    public string ControllingFieldApiName { get; set; } = string.Empty;
+    public List<string> RecordTypeNames { get; set; } = new();
+    public string RelationshipTargetObject { get; set; } = string.Empty;
+    public string RelationshipType { get; set; } = string.Empty;
+    public string RelationshipLabel { get; set; } = string.Empty;
+    public string RelationshipName { get; set; } = string.Empty;
+    public string AudienceName { get; set; } = string.Empty;
+    public bool NeedsUserConfirmation { get; set; }
+    public bool IsResolved { get; set; }
+    public string AmbiguityReason { get; set; } = string.Empty;
+    public List<ResolutionOption> ResolutionOptions { get; set; } = new();
     public List<string> PicklistValues { get; set; } = new();
     public List<PicklistValueRequirement> PicklistEntries { get; set; } = new();
     public List<PicklistValueRenameRequirement> PicklistRenames { get; set; } = new();
@@ -58,6 +74,15 @@ public sealed class SalesforceConfigRequirement
     public string TestMethodName { get; set; } = string.Empty;
     public string TestMethodCode { get; set; } = string.Empty;
     public bool RequiresSecondAiPass { get; set; }
+}
+
+public sealed class ResolutionOption
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public int ConfidenceScore { get; set; }
 }
 
 public sealed record FileEditPlan(string Path, List<CodeEdit> Edits);
