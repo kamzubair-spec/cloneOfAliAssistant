@@ -18,7 +18,8 @@ public sealed class StoryAnalyzerService
     {
         var configKeywords = new[]
         {
-            "profile", "permission set", "permission", "custom permission", "fls", "field level security", "access"
+            "profile", "permission set", "permission", "custom permission", "fls", "field level security", "access",
+            "field", "picklist", "lookup", "master detail", "master-detail", "object"
         };
 
         return configKeywords.Any(keyword => userCommand.Contains(keyword, StringComparison.OrdinalIgnoreCase));
@@ -173,7 +174,64 @@ Return a concise plain-text diagnostic.
         plan.Summary ??= string.Empty;
         plan.Requirements ??= new List<SalesforceConfigRequirement>();
         plan.Questions ??= new List<string>();
-        foreach (var req in plan.Requirements) { req.Id ??= ""; req.Type ??= ""; req.Description ??= ""; req.PermissionSetNames ??= new List<string>(); }
+        foreach (var req in plan.Requirements)
+        {
+            req.Id ??= string.Empty;
+            req.Type ??= string.Empty;
+            req.Service ??= string.Empty;
+            req.Operation ??= string.Empty;
+            req.ObjectApiName ??= string.Empty;
+            req.FieldApiName ??= string.Empty;
+            req.FieldType ??= string.Empty;
+            req.Label ??= string.Empty;
+            req.DefaultValue ??= string.Empty;
+            req.InlineHelpText ??= string.Empty;
+            req.Description ??= string.Empty;
+            req.FieldDescription ??= string.Empty;
+            req.Formula ??= string.Empty;
+            req.FormulaReturnType ??= string.Empty;
+            req.ExistingFieldApiName ??= string.Empty;
+            req.TargetMetadataName ??= string.Empty;
+            req.TargetSectionLabel ??= string.Empty;
+            req.ReplaceFieldApiName ??= string.Empty;
+            req.VisibilityConditionSummary ??= string.Empty;
+            req.PreferredTargetType ??= string.Empty;
+            req.TargetRegionOrComponent ??= string.Empty;
+            req.TargetLayoutOrPageLabel ??= string.Empty;
+            req.ValidationRuleName ??= string.Empty;
+            req.ErrorMessage ??= string.Empty;
+            req.ErrorLocation ??= string.Empty;
+            req.PermissionType ??= string.Empty;
+            req.PermissionValue ??= string.Empty;
+            req.ValueSetSource ??= string.Empty;
+            req.GlobalValueSetName ??= string.Empty;
+            req.ControllingFieldApiName ??= string.Empty;
+            req.RelationshipTargetObject ??= string.Empty;
+            req.RelationshipType ??= string.Empty;
+            req.RelationshipLabel ??= string.Empty;
+            req.RelationshipName ??= string.Empty;
+            req.AudienceName ??= string.Empty;
+            req.AmbiguityReason ??= string.Empty;
+            req.PermissionSetNames ??= new List<string>();
+            req.RecordTypeNames ??= new List<string>();
+            req.ResolutionOptions ??= new List<ResolutionOption>();
+            req.PicklistValues ??= new List<string>();
+            req.PicklistEntries ??= new List<PicklistValueRequirement>();
+            req.PicklistRenames ??= new List<PicklistValueRenameRequirement>();
+            req.CustomMetadataTypeApiName ??= string.Empty;
+            req.RecordDeveloperName ??= string.Empty;
+            req.CustomMetadataValues ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            req.ProfileAccess ??= new ProfileAccessRequirement();
+            req.SuggestedFiles ??= new List<string>();
+            req.SuggestedTriggerEvent ??= string.Empty;
+            req.SuggestedHelperMethodName ??= string.Empty;
+            req.ImplementationStrategy ??= string.Empty;
+            req.ImplementationKind ??= string.Empty;
+            req.EventInvocation ??= string.Empty;
+            req.HelperMethodCode ??= string.Empty;
+            req.TestMethodName ??= string.Empty;
+            req.TestMethodCode ??= string.Empty;
+        }
     }
 
     private static string BuildSystemPrompt(string repoPath)
@@ -182,17 +240,31 @@ Return a concise plain-text diagnostic.
         var profiles = LoadMetadataNames(Path.Combine(metadataRoot, "profiles"), "*.profile-meta.xml", ".profile-meta");
         var permissionSets = LoadMetadataNames(Path.Combine(metadataRoot, "permissionsets"), "*.permissionset-meta.xml", ".permissionset-meta");
         var customPermissions = LoadMetadataNames(Path.Combine(metadataRoot, "customPermissions"), "*.customPermission-meta.xml", ".customPermission-meta");
+        var objects = Directory.Exists(Path.Combine(metadataRoot, "objects"))
+            ? Directory.GetDirectories(Path.Combine(metadataRoot, "objects"))
+                .Select(path => Path.GetFileName(path) ?? string.Empty)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+                .ToList()
+            : new List<string>();
+        var globalValueSets = LoadMetadataNames(Path.Combine(metadataRoot, "globalValueSets"), "*.globalValueSet-meta.xml", ".globalValueSet-meta");
 
         return $$"""
-You are a Salesforce Permission Analyst. Your ONLY job is to extract requirements related to Profiles, Permission Sets, and Custom Permissions.
-The system is NOT configured for any other metadata types.
+You are a Salesforce Config Analyst. Your job is to extract supported requirements related to Profiles, Permission Sets, Custom Permissions, and Custom Fields on existing objects.
 
 Supported Work:
 1. Profile Updates (FLS, Tab Visibility, Apex Class Access, Object Permissions, User Permissions, etc.)
 2. Permission Set Updates (FLS, Object Permissions, etc.)
 3. Custom Permission Creation/Updates
+4. Custom Field Creation/Updates on existing objects
+   - text, textarea, longtextarea, number, currency, percent, checkbox, date, datetime
+   - picklist / multiselect picklist
+   - lookup / master detail
 
-If a requirement is NOT for a Profile, Permission Set, or Custom Permission, you MUST classify it as "unsupported_requirement" with a description saying "System is not configured for this requirement."
+If a requirement is NOT in those supported areas, you MUST classify it as "unsupported_requirement" with a description saying "System is not configured for this requirement."
+
+Available object names:
+{{string.Join(", ", objects)}}
 
 Available profile names:
 {{string.Join(", ", profiles)}}
@@ -203,6 +275,9 @@ Available permission set names:
 Available custom permission names:
 {{string.Join(", ", customPermissions)}}
 
+Available global value set names:
+{{string.Join(", ", globalValueSets)}}
+
 Return JSON only:
 {
   "summary": "...",
@@ -210,14 +285,27 @@ Return JSON only:
   "requirements": [
     {
       "id": "REQ-001",
-      "type": "profile_metadata | permission_set | custom_permission | unsupported_requirement",
+      "type": "profile_metadata | permission_set | custom_permission | custom_field | unsupported_requirement",
       "operation": "create | update",
       "targetMetadataName": "Metadata name",
       "label": "Label",
       "description": "...",
+      "fieldType": "Text | Picklist | Lookup",
+      "precision": 18,
+      "scale": 2,
+      "visibleLines": 4,
       "permissionType": "fls | tab | apex_class | apex_page | object | custom_permission | record_type | application | user_permission",
       "objectApiName": "Account",
       "fieldApiName": "Industry",
+      "valueSetSource": "local | global",
+      "globalValueSetName": "Global set name",
+      "controllingFieldApiName": "Type__c",
+      "recordTypeNames": [],
+      "relationshipTargetObject": "Account",
+      "relationshipType": "lookup | masterdetail",
+      "relationshipLabel": "Placements",
+      "relationshipName": "Placements",
+      "audienceName": "Revolent User",
       "permissionValue": "true/false or visibility",
       "permissionSetNames": [],
       "profileAccess": { "editableProfiles": [], "readOnlyProfiles": [], "applyReadOnlyToRemainingProfiles": false }
@@ -226,8 +314,8 @@ Return JSON only:
 }
 
 Rules:
-- Only extract profile, permission set, and custom permission work.
-- If the story asks for any other metadata, automation, code, layout, flow, object, field, validation rule, page, or anything outside those three families, return "unsupported_requirement".
+- Only extract profile, permission set, custom permission, and custom field work.
+- If the story asks for any other metadata, automation, code, layout, flow, object creation, validation rule, page, or anything outside those families, return "unsupported_requirement".
 - For unsupported items, set the description to exactly "{{PermissionToolingCatalog.UnsupportedRequirementMessage}}".
 - Use existing metadata API/file names when they are already present in the repo lists above.
 - For FLS: permissionType "fls".
@@ -235,6 +323,9 @@ Rules:
 - For Apex: permissionType "apex_class" or "apex_page", permissionValue "true|false".
 - For Object: permissionType "object", permissionValue e.g. "Read,Create,Edit".
 - For User Perms: permissionType "user_permission".
+- For custom fields, use type "custom_field".
+- If the story mentions users or user groups but not an exact profile / permission set name, put the phrase into "audienceName".
+- If object names are unclear, provide your best object guess in "objectApiName".
 - EVERY other request MUST be "unsupported_requirement".
 """;
     }

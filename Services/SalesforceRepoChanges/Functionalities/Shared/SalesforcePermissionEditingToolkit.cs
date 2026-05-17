@@ -331,6 +331,9 @@ internal sealed class SalesforcePermissionEditingToolkit
             ObjectApiName = requirement.ObjectApiName,
             FieldApiName = requirement.FieldApiName,
             FieldType = requirement.FieldType,
+            Precision = requirement.Precision,
+            Scale = requirement.Scale,
+            VisibleLines = requirement.VisibleLines,
             Label = requirement.Label,
             Length = requirement.Length,
             Required = requirement.Required,
@@ -353,6 +356,25 @@ internal sealed class SalesforcePermissionEditingToolkit
             ErrorLocation = requirement.ErrorLocation,
             PermissionType = requirement.PermissionType,
             PermissionValue = permissionValue,
+            ValueSetSource = requirement.ValueSetSource,
+            GlobalValueSetName = requirement.GlobalValueSetName,
+            ControllingFieldApiName = requirement.ControllingFieldApiName,
+            RecordTypeNames = new List<string>(requirement.RecordTypeNames),
+            RelationshipTargetObject = requirement.RelationshipTargetObject,
+            RelationshipType = requirement.RelationshipType,
+            RelationshipLabel = requirement.RelationshipLabel,
+            RelationshipName = requirement.RelationshipName,
+            AudienceName = requirement.AudienceName,
+            NeedsUserConfirmation = requirement.NeedsUserConfirmation,
+            IsResolved = requirement.IsResolved,
+            AmbiguityReason = requirement.AmbiguityReason,
+            ResolutionOptions = requirement.ResolutionOptions.Select(option => new ResolutionOption
+            {
+                Id = option.Id,
+                Label = option.Label,
+                Type = option.Type,
+                Description = option.Description
+            }).ToList(),
             PicklistValues = new List<string>(requirement.PicklistValues),
             PicklistEntries = requirement.PicklistEntries.Select(item => new PicklistValueRequirement
             {

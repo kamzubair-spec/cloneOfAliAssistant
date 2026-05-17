@@ -168,6 +168,7 @@ public sealed class ConfigMetadataOrchestrator
             "profile" => "profile_metadata",
             "permissionset" => "permission_set",
             "custompermission" => "custom_permission",
+            "field" or "field_metadata" or "customfield" or "custom_field" => "custom_field",
             _ => value
         };
 
@@ -183,6 +184,7 @@ public sealed class ConfigMetadataOrchestrator
             "profile_metadata" or "profile_fls_update" => nameof(ProfileEditingService),
             "permission_set" or "permission_set_fls_update" => nameof(PermissionSetEditingService),
             "custom_permission" => nameof(CustomPermissionEditingService),
+            "custom_field" or "field_metadata" => nameof(FieldMetadataService),
             _ => string.Empty
         };
     }

@@ -18,7 +18,9 @@ namespace eZBERP_AI_IDE
         private readonly SalesforceCliService _salesforceCliService;
         private readonly SalesforceValidationService _salesforceValidationService;
         private readonly RepoContextService _repoContextService;
+        private readonly MetadataDiscoveryService _metadataDiscoveryService;
         private readonly StoryAnalyzerService _storyAnalyzerService;
+        private readonly AnalysisResolutionService _analysisResolutionService;
         private readonly ConfigMetadataOrchestrator _configMetadataOrchestrator;
         private readonly JiraService _jiraService;
 
@@ -61,13 +63,16 @@ namespace eZBERP_AI_IDE
             _salesforceCliService = new SalesforceCliService();
             _salesforceValidationService = new SalesforceValidationService(_salesforceCliService);
             _repoContextService = new RepoContextService();
+            _metadataDiscoveryService = new MetadataDiscoveryService();
             _storyAnalyzerService = new StoryAnalyzerService(_deepSeekClient);
+            _analysisResolutionService = new AnalysisResolutionService(_metadataDiscoveryService);
             _jiraService = new JiraService();
             _configMetadataOrchestrator = new ConfigMetadataOrchestrator(new IConfigWorkItemHandler[]
             {
                 new ProfileEditingService(),
                 new PermissionSetEditingService(),
-                new CustomPermissionEditingService()
+                new CustomPermissionEditingService(),
+                new FieldMetadataService()
             }, _deepSeekClient, ReportProcessingStep);
             InitializeComponent();
             InitializeCustomComponents();
@@ -451,7 +456,14 @@ namespace eZBERP_AI_IDE
 
             if (showProgress)
             {
-                ShowCoverageProgress(story, 4, "Assessing what can be handled automatically and what still needs manual work...");
+                ShowCoverageProgress(story, 4, "Resolving ambiguous objects, audiences, and field metadata details...");
+            }
+
+            normalizedPlan = await _analysisResolutionService.ResolvePlanAsync(_selectedRepoPath!, normalizedPlan, ShowResolutionPromptAsync, storyText);
+
+            if (showProgress)
+            {
+                ShowCoverageProgress(story, 5, "Assessing what can be handled automatically and what still needs manual work...");
             }
 
             var coverage = await _configMetadataOrchestrator.AssessCoverageAsync(_selectedRepoPath!, normalizedPlan);
@@ -512,8 +524,8 @@ namespace eZBERP_AI_IDE
                 "Load Jira story",
                 "Extract requirements with AI",
                 "Normalize requirements",
-                "Detect unsupported work",
-                "Assess coverage",
+                "Resolve ambiguities",
+                "Assess supported work",
                 "Render report"
             };
 
@@ -571,7 +583,7 @@ namespace eZBERP_AI_IDE
         {
             var normalizedRepoPath = Path.GetFullPath(repoPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             var visionMode = AiProviderSettings.UseOpenAiForInlineImages ? "vision-auto" : "text-only";
-            const string coverageAnalyzerCacheVersion = "coverage-v16-permissions-only";
+            const string coverageAnalyzerCacheVersion = "coverage-v17-field-object-resolution";
             return $"{coverageAnalyzerCacheVersion}|{visionMode}|{normalizedRepoPath}|{storyKey}";
         }
 
@@ -1023,10 +1035,122 @@ pre {{ white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:8p
             {
                 var plan = await _storyAnalyzerService.AnalyzeAsync(_selectedRepoPath!, cmd);
                 var normalized = _configMetadataOrchestrator.NormalizePlan(plan);
+                normalized = await _analysisResolutionService.ResolvePlanAsync(_selectedRepoPath!, normalized, ShowResolutionPromptAsync, cmd);
                 var coverage = await _configMetadataOrchestrator.AssessCoverageAsync(_selectedRepoPath!, normalized);
                 return await ProcessSalesforceConfigCoverageAsync(coverage);
             }
             return "Command not recognized or unsupported in this focused version.";
+        }
+
+        private Task<ResolutionResponse?> ShowResolutionPromptAsync(ResolutionPrompt prompt)
+        {
+            using var dialog = CreateResolutionDialog(prompt);
+            return Task.FromResult(dialog.ShowDialog(this) == DialogResult.OK
+                ? dialog.Tag as ResolutionResponse
+                : null);
+        }
+
+        private Form CreateResolutionDialog(ResolutionPrompt prompt)
+        {
+            var dialog = new Form
+            {
+                Text = "Confirm Analysis Details",
+                Size = new Size(620, 420),
+                StartPosition = FormStartPosition.CenterParent,
+                BackColor = Color.FromArgb(45, 45, 48),
+                ForeColor = Color.White,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var label = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 70,
+                ForeColor = Color.Gainsboro,
+                Padding = new Padding(12, 12, 12, 0),
+                Text = prompt.Prompt
+            };
+
+            Control selector;
+            if (prompt.AllowMultiple)
+            {
+                var checkedList = new CheckedListBox
+                {
+                    Dock = DockStyle.Fill,
+                    BackColor = Color.FromArgb(35, 35, 35),
+                    ForeColor = Color.White,
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+                foreach (var option in prompt.Options)
+                {
+                    checkedList.Items.Add(BuildResolutionOptionText(option));
+                }
+
+                selector = checkedList;
+            }
+            else
+            {
+                var listBox = new ListBox
+                {
+                    Dock = DockStyle.Fill,
+                    BackColor = Color.FromArgb(35, 35, 35),
+                    ForeColor = Color.White,
+                    BorderStyle = BorderStyle.FixedSingle
+                };
+                foreach (var option in prompt.Options)
+                {
+                    listBox.Items.Add(BuildResolutionOptionText(option));
+                }
+
+                selector = listBox;
+            }
+
+            var button = new Button
+            {
+                Text = "Confirm",
+                Dock = DockStyle.Bottom,
+                Height = 34
+            };
+            StyleButton(button);
+            button.Click += (_, _) =>
+            {
+                var response = new ResolutionResponse();
+                if (prompt.AllowMultiple && selector is CheckedListBox checkedList)
+                {
+                    foreach (var index in checkedList.CheckedIndices.Cast<int>())
+                    {
+                        response.SelectedOptionIds.Add(prompt.Options[index].Id);
+                    }
+                }
+                else if (!prompt.AllowMultiple && selector is ListBox listBox && listBox.SelectedIndex >= 0)
+                {
+                    response.SelectedOptionIds.Add(prompt.Options[listBox.SelectedIndex].Id);
+                }
+
+                if (response.SelectedOptionIds.Count == 0)
+                {
+                    MessageBox.Show("Please select at least one option.", "Resolution Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                dialog.Tag = response;
+                dialog.DialogResult = DialogResult.OK;
+                dialog.Close();
+            };
+
+            dialog.Controls.Add(selector);
+            dialog.Controls.Add(button);
+            dialog.Controls.Add(label);
+            return dialog;
+        }
+
+        private static string BuildResolutionOptionText(ResolutionOption option)
+        {
+            var scoreText = option.ConfidenceScore > 0 ? $" [{option.ConfidenceScore}%]" : string.Empty;
+            var description = string.IsNullOrWhiteSpace(option.Description) ? string.Empty : $" - {option.Description}";
+            return $"{option.Type}: {option.Label}{scoreText}{description}";
         }
 
         private async Task<string> ProcessSalesforceConfigCoverageAsync(SalesforceConfigCoverage coverage, string storyText = "")

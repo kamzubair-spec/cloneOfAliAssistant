@@ -67,6 +67,7 @@ public static class SalesforceConfigPlanFormatter
             "profile_metadata" or "profile_fls_update" => BuildProfileHeadline(req),
             "permission_set" or "permission_set_fls_update" => BuildPermissionSetHeadline(req),
             "custom_permission" => BuildCustomPermissionHeadline(req),
+            "custom_field" or "field_metadata" => BuildFieldHeadline(req),
             "unsupported_requirement" => BuildUnsupportedHeadline(req),
             _ => req.Label ?? req.Description ?? req.Id
         };
@@ -84,9 +85,14 @@ public static class SalesforceConfigPlanFormatter
 
         var sb = new StringBuilder();
         if (!string.IsNullOrWhiteSpace(req.Operation)) sb.Append($"Operation: {req.Operation}. ");
+        if (!string.IsNullOrWhiteSpace(req.FieldType)) sb.Append($"Field type: {req.FieldType}. ");
         if (!string.IsNullOrWhiteSpace(req.PermissionType)) sb.Append($"Permission type: {req.PermissionType}. ");
         if (!string.IsNullOrWhiteSpace(req.ObjectApiName)) sb.Append($"Object: {req.ObjectApiName}. ");
         if (!string.IsNullOrWhiteSpace(req.FieldApiName)) sb.Append($"Field: {req.FieldApiName}. ");
+        if (!string.IsNullOrWhiteSpace(req.GlobalValueSetName)) sb.Append($"Global value set: {req.GlobalValueSetName}. ");
+        if (!string.IsNullOrWhiteSpace(req.ControllingFieldApiName)) sb.Append($"Controlling field: {req.ControllingFieldApiName}. ");
+        if (!string.IsNullOrWhiteSpace(req.RelationshipTargetObject)) sb.Append($"Related object: {req.RelationshipTargetObject}. ");
+        if (req.RecordTypeNames?.Count > 0) sb.Append($"Record types: {string.Join(", ", req.RecordTypeNames)}. ");
         if (!string.IsNullOrWhiteSpace(req.PermissionValue)) sb.Append($"Value: {req.PermissionValue}. ");
         if (req.PermissionSetNames?.Count > 1) sb.Append($"Targets: {string.Join(", ", req.PermissionSetNames.Where(name => !string.IsNullOrWhiteSpace(name)))}. ");
         if (!string.IsNullOrWhiteSpace(req.Description)) sb.Append(req.Description);
@@ -117,6 +123,14 @@ public static class SalesforceConfigPlanFormatter
         var name = FirstNonBlank(req.Label, req.TargetMetadataName, "Unnamed Custom Permission");
         var operation = string.IsNullOrWhiteSpace(req.Operation) ? string.Empty : $"{req.Operation} ";
         return $"Custom Permission: {operation}{name}".Trim();
+    }
+
+    private static string BuildFieldHeadline(SalesforceConfigRequirement req)
+    {
+        var fieldPath = BuildFieldPath(req);
+        var operation = string.IsNullOrWhiteSpace(req.Operation) ? "update" : req.Operation;
+        var fieldType = string.IsNullOrWhiteSpace(req.FieldType) ? "field" : req.FieldType;
+        return $"Field: {operation} {fieldPath} ({fieldType})";
     }
 
     private static string BuildUnsupportedHeadline(SalesforceConfigRequirement req)

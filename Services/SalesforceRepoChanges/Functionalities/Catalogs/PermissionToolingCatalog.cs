@@ -23,7 +23,8 @@ public static class PermissionToolingCatalog
 
     public static readonly HashSet<string> SupportedRequirementTypes = new(ProfileRequirementTypes
         .Concat(PermissionSetRequirementTypes)
-        .Concat(CustomPermissionRequirementTypes), StringComparer.OrdinalIgnoreCase);
+        .Concat(CustomPermissionRequirementTypes)
+        .Concat(FieldMetadataCatalog.SupportedRequirementTypes), StringComparer.OrdinalIgnoreCase);
 
     public static readonly HashSet<string> SupportedPermissionTypes = new(StringComparer.OrdinalIgnoreCase)
     {
